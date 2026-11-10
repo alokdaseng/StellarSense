@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StellarSense • Satellite Flight Operations &amp; Gemma 4 FDIR</title>
+  <!-- Apple Typography: Inter with clean optical weights + JetBrains Mono for telemetry numerals -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=20261110_final" />
+  <!-- Three.js for 3D Satellite Digital Twin -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Chart.js for Minimalist Telemetry Curves -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Ambient VisionOS Atmosphere Backdrop Glows -->
+  <div class="ambient-glow glow-blue"></div>
+  <div class="ambient-glow glow-purple"></div>
+
+  <!-- Apple-Style Floating Island Navigation Header -->
+  <header class="apple-header">
+    <div class="nav-brand">
+      <div class="brand-glyph">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="satellite-svg">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M4.93 4.93l4.24 4.24"></path>
+          <path d="M14.83 14.83l4.24 4.24"></path>
+          <path d="M14.83 9.17l4.24-4.24"></path>
+          <path d="M4.93 19.07l4.24-4.24"></path>
+          <path d="M2 12h3"></path>
+          <path d="M19 12h3"></path>
+          <path d="M12 2v3"></path>
+          <path d="M12 19v3"></path>
+        </svg>
+      </div>
+      <div class="brand-meta">
+        <span class="app-title">StellarSense</span>
+        <span class="app-subtitle">Satellite Health Monitor • Autonomous Gemma 4 FDIR</span>
+      </div>
+    </div>
+
+    <!-- Central Telemetry Status Pills -->
+    <div class="telemetry-pill-group">
+      <div class="capsule-pill">
+        <span class="capsule-label">MET</span>
+        <span id="valMet" class="capsule-val font-num">00:00:00</span>
+      </div>
+      <div class="capsule-pill">
+        <span class="capsule-label">DOWNLINK</span>
+        <span id="valPkt" class="capsule-val font-num">#0</span>
+      </div>
+      <div class="capsule-pill">
+        <span class="capsule-label">RF LINK</span>
+        <span id="valRssi" class="capsule-val font-num">-- dBm</span>
+      </div>
+      <div class="capsule-pill">
+        <span class="capsule-label">LOSS</span>
+        <span id="valLoss" class="capsule-val font-num">0 (0.0%)</span>
+      </div>
+      <div class="capsule-pill ai-pill">
+        <span class="ai-orb"></span>
+        <span id="valGemmaPill" class="capsule-val">Gemma 4 AI</span>
+      </div>
+      <div class="capsule-pill" id="fdirBadgeContainer">
+        <span id="valFdir" class="status-badge nominal">Nominal</span>
+      </div>
+    </div>
+
+    <!-- Apple-Style Capsule Action Controls -->
+    <div class="nav-actions">
+      <button id="btnConnect" class="btn btn-primary" onclick="toggleWebSerial()" title="Connect to ESP32 Ground Station via Web Serial">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+        </svg>
+        <span id="btnConnectText">Connect Ground Station</span>
+      </button>
+      <button id="btnSimulate" class="btn btn-frosted" onclick="toggleSimulation()" title="Toggle Synthetic Telemetry Simulator">
+        <span id="btnSimText">Simulation: Off</span>
+      </button>
+      <button id="btnAudio" class="btn btn-circle" onclick="toggleAudio()" title="Toggle Audio Alarms">
+        <span id="btnAudioIcon">🔔</span>
+      </button>
+      <button id="btnExport" class="btn btn-circle" onclick="exportCSV()" title="Export CSV Flight Log">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Apple Dynamic Island Status Banner -->
+  <div id="masterAnnunciator" class="dynamic-island nominal">
+    <div class="island-main">
+      <div class="island-indicator">
+        <span class="status-pulse-dot"></span>
+        <div class="hidden-annunciator-lights" style="display: none;">
+          <div id="lightCaution">CAUTION</div>
+          <div id="lightWarning">WARNING</div>
+        </div>
+      </div>
+      <div class="island-content">
+        <span class="island-title" id="annunciatorText">All orbital subsystems nominal • 433 MHz LoRa telemetry locked</span>
+      </div>
+      <button id="btnSilenceAlarm" class="btn-silence-alarm" style="display: none;" title="Silence Audible Alarm">
+        Silence Alarm
+      </button>
+    </div>
+
+    <!-- iOS Segmented Control for Hardware Sensor Diagnostics -->
+    <div class="segmented-control" id="simChaosControls" style="display: none;">
+      <span class="seg-label">Sensor Diagnostics</span>
+      <div class="seg-track">
+        <button class="seg-btn" onclick="triggerChaos('reset')">Nominal</button>
+        <button class="seg-btn" onclick="triggerChaos('heat')">Thermal Spike</button>
+        <button class="seg-btn" onclick="triggerChaos('volt')">Bus Sag</button>
+        <button class="seg-btn" onclick="triggerChaos('vib')">Vibration</button>
+        <button class="seg-btn" onclick="triggerChaos('tumble')">Tumble</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Mission Workspace -->
+  <main class="mission-workspace">
+    <!-- COLUMN 1: Subsystem Telemetry Cards (Apple Health / Home Style) -->
+    <section class="panel telemetry-column">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Core Subsystems</h2>
+          <p class="panel-subtitle">Calibrated onboard sensor telemetry</p>
+        </div>
+        <span class="pill-chip green">Live</span>
+      </div>
+
+      <div class="metric-cards-stack">
+        <!-- 1. Temperature Card -->
+        <div class="metric-card" id="cardTemp">
+          <div class="metric-card-header">
+            <span class="metric-label">Internal Temperature</span>
+            <span class="metric-sublabel">DS18B20 • Limit 38.0°C</span>
+          </div>
+          <div class="metric-value-row">
+            <span id="valTemp" class="hero-number font-num">25.0</span>
+            <span class="hero-unit">°C</span>
+          </div>
+          <div class="capsule-progress-bar">
+            <div id="barTemp" class="progress-fill nominal" style="width: 35%;"></div>
+          </div>
+        </div>
+
+        <!-- 2. EPS Bus Voltage Card -->
+        <div class="metric-card" id="cardVolt">
+          <div class="metric-card-header">
+            <span class="metric-label">Electrical Bus Voltage</span>
+            <span class="metric-sublabel">INA219 • Limit 4.20V</span>
+          </div>
+          <div class="metric-value-row">
+            <span id="valVolt" class="hero-number font-num">5.02</span>
+            <span class="hero-unit">V</span>
+          </div>
+          <div class="capsule-progress-bar">
+            <div id="barVolt" class="progress-fill nominal" style="width: 85%;"></div>
+          </div>
+        </div>
+
+        <!-- 3. EPS Load Current & Power Card -->
+        <div class="metric-card" id="cardCurr">
+          <div class="metric-card-header">
+            <span class="metric-label">Load Current &amp; Power</span>
+            <span class="metric-sublabel">INA219 • Max 800 mA</span>
+          </div>
+          <div class="dual-metric-row">
+            <div class="metric-cell">
+              <span id="valCurr" class="sub-number font-num">312</span>
+              <span class="sub-unit">mA</span>
+            </div>
+            <div class="metric-cell-divider"></div>
+            <div class="metric-cell">
+              <span id="valPower" class="sub-number font-num">1566</span>
+              <span class="sub-unit">mW</span>
+            </div>
+          </div>
+          <div class="capsule-progress-bar">
+            <div id="barCurr" class="progress-fill nominal" style="width: 39%;"></div>
+          </div>
+        </div>
+
+        <!-- 4. Structural Vibration Card -->
+        <div class="metric-card" id="cardVib">
+          <div class="metric-card-header">
+            <span class="metric-label">Structural Vibration RMS</span>
+            <span class="metric-sublabel">MPU-6050 #1 • Limit 0.70g</span>
+          </div>
+          <div class="metric-value-row">
+            <span id="valVib" class="hero-number font-num">0.080</span>
+            <span class="hero-unit">g RMS</span>
+          </div>
+          <div class="capsule-progress-bar">
+            <div id="barVib" class="progress-fill nominal" style="width: 12%;"></div>
+          </div>
+        </div>
+
+        <!-- 5. Attitude Orientation Card -->
+        <div class="metric-card">
+          <div class="metric-card-header">
+            <span class="metric-label">Attitude Orientation</span>
+            <span class="metric-sublabel">MPU-6050 #2 • Complementary</span>
+          </div>
+          <div class="tri-metric-row">
+            <div class="tri-cell">
+              <span class="tri-label">Pitch</span>
+              <span id="valPitch" class="tri-val font-num">0.0°</span>
+            </div>
+            <div class="tri-cell">
+              <span class="tri-label">Roll</span>
+              <span id="valRoll" class="tri-val font-num">0.0°</span>
+            </div>
+            <div class="tri-cell">
+              <span class="tri-label">Tumble</span>
+              <span id="valTumble" class="tri-val font-num">0.0°/s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMN 2: 3D Spatial Digital Twin (Apple VisionOS Viewport) -->
+    <section class="panel spatial-column">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Spatial Digital Twin</h2>
+          <p class="panel-subtitle">Real-time attitude orientation &amp; solar alignment</p>
+        </div>
+        <span class="subtle-hint">Drag to inspect • Pinch to zoom</span>
+      </div>
+
+      <div id="canvasContainer" class="spatial-viewport">
+        <!-- Floating Glass Attitude Pills -->
+        <div class="spatial-badge-top-left">
+          <span class="badge-icon">🛰️</span>
+          <span>1U CubeSat • Dual Solar Arrays</span>
+        </div>
+        <div class="spatial-badge-top-right">
+          <span class="status-pulse-dot green"></span>
+          <span>Pitch <span id="overlayPitch" class="font-num">0.0</span>° • Roll <span id="overlayRoll" class="font-num">0.0</span>° • <span id="overlayTumble" class="font-num">0.0</span>°/s</span>
+        </div>
+
+        <!-- Floating Bottom Subsystem Status Strip -->
+        <div class="floating-status-dock">
+          <div class="dock-item" id="subsystemEps">
+            <span class="status-pulse-dot green" id="dotEps"></span>
+            <span class="dock-title">EPS</span>
+            <span class="dock-val" id="valSubEps">Nominal</span>
+          </div>
+          <div class="dock-item" id="subsystemTcs">
+            <span class="status-pulse-dot green" id="dotTcs"></span>
+            <span class="dock-title">TCS</span>
+            <span class="dock-val" id="valSubTcs">Nominal</span>
+          </div>
+          <div class="dock-item" id="subsystemAdcs">
+            <span class="status-pulse-dot green" id="dotAdcs"></span>
+            <span class="dock-title">ADCS</span>
+            <span class="dock-val" id="valSubAdcs">Locked</span>
+          </div>
+          <div class="dock-item" id="subsystemComms">
+            <span class="status-pulse-dot green" id="dotComms"></span>
+            <span class="dock-title">LoRa</span>
+            <span class="dock-val" id="valSubComms">433 MHz</span>
+          </div>
+          <div class="dock-item" id="subsystemStruct">
+            <span class="status-pulse-dot green" id="dotStruct"></span>
+            <span class="dock-title">Payload</span>
+            <span class="dock-val" id="valSubStruct">Nominal</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMN 3: Telemetry Strip Charts (Apple Stocks Style) -->
+    <section class="panel charts-column">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Telemetry Curves</h2>
+          <p class="panel-subtitle">Rolling 60-second temporal buffer</p>
+        </div>
+        <span class="pill-chip blue">Live Stream</span>
+      </div>
+
+      <div class="charts-stack">
+        <!-- Chart 1: Temperature -->
+        <div class="chart-card">
+          <div class="chart-card-meta">
+            <span class="chart-card-title">Thermal Profile</span>
+            <span class="chart-badge font-num" id="chartValTemp">25.0°C</span>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chartTemp"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Power Bus -->
+        <div class="chart-card">
+          <div class="chart-card-meta">
+            <span class="chart-card-title">EPS Voltage &amp; Current</span>
+            <span class="chart-badge font-num" id="chartValPower">5.02V / 312mA</span>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chartPower"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3: Vibration -->
+        <div class="chart-card">
+          <div class="chart-card-meta">
+            <span class="chart-card-title">Structural Vibration</span>
+            <span class="chart-badge font-num" id="chartValVib">0.080g</span>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chartVib"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 4: Attitude -->
+        <div class="chart-card">
+          <div class="chart-card-meta">
+            <span class="chart-card-title">Attitude Dynamics</span>
+            <span class="chart-badge font-num" id="chartValAttitude">0.0° / 0.0°</span>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="chartAttitude"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Apple Intelligence: Gemma 4 Autonomous Flight Director -->
+  <section class="apple-intelligence-card">
+    <div class="ai-glow-border"></div>
+    <div class="ai-card-content">
+      <div class="ai-header">
+        <div class="ai-brand-group">
+          <div class="apple-intelligence-glyph">
+            <div class="ai-gradient-orb"></div>
+          </div>
+          <div>
+            <div class="ai-title-row">
+              <h2 class="ai-heading">Gemma 4 Flight Intelligence</h2>
+              <span class="apple-tag">Autonomous FDIR Agent</span>
+            </div>
+            <p class="ai-subheading">Agent Skill: satellite-fdir v1.0 • Zero-Shot Aerospace Diagnostic Reasoner</p>
+          </div>
+        </div>
+
+        <div class="ai-controls-group">
+          <div class="ai-status-pill" id="gemmaBackendBadge">
+            <span class="status-pulse-dot purple"></span>
+            <span id="gemmaBackendText">Gemma 4 Edge Active</span>
+          </div>
+          <label class="ios-switch-wrap" title="Toggle Autonomous Telecommand Uplink via LoRa">
+            <input type="checkbox" id="toggleAutoUplink" checked />
+            <span class="ios-slider"></span>
+            <span class="ios-switch-label">Autonomous Uplink</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="ai-grid">
+        <!-- Subpanel A: Real-Time Diagnostic Reasoner -->
+        <div class="ai-subpanel">
+          <div class="subpanel-title">Real-Time FMEA Assessment</div>
+          <div class="ai-stat-row">
+            <div class="ai-stat-tile">
+              <span class="ai-stat-label">Subsystem</span>
+              <span class="ai-stat-value" id="fmeaSubsystem">System Wide</span>
+            </div>
+            <div class="ai-stat-tile">
+              <span class="ai-stat-label">Severity</span>
+              <span class="status-badge nominal" id="fmeaSeverity">Nominal</span>
+            </div>
+            <div class="ai-stat-tile">
+              <span class="ai-stat-label">Confidence</span>
+              <span class="ai-stat-value font-num" id="fmeaConfidence">98.5%</span>
+            </div>
+            <div class="ai-stat-tile">
+              <span class="ai-stat-label">Latency</span>
+              <span class="ai-stat-value font-num" id="fmeaLatency">2.1 ms</span>
+            </div>
+          </div>
+
+          <!-- Thought Bubble -->
+          <div class="ai-thought-bubble">
+            <div class="thought-header">
+              <span class="thought-indicator">✦</span>
+              <span class="thought-label">Cross-Sensor Correlation &amp; Temporal Reasoning</span>
+            </div>
+            <p class="thought-text" id="fmeaReasoning">
+              Telemetry parameters nominal across TCS, EPS, ADCS, and COMM subsystems. Continuous sliding-window derivative analysis active.
+            </p>
+            <div class="thought-action">
+              <span class="action-tag">Recommendation</span>
+              <span class="action-text" id="fmeaRecommendation">Maintain routine 800ms telemetry downlink. All systems within flight boundary envelopes.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subpanel B: Autonomous Uplink & Operator Commands -->
+        <div class="ai-subpanel">
+          <div class="subpanel-title-row">
+            <span class="subpanel-title">LoRa Telecommand Feed</span>
+            <span class="mini-counter" id="telecommandCountBadge">0 Uplinked</span>
+          </div>
+
+          <div class="uplink-event-stream" id="gemmaToolsFeed">
+            <div class="stream-item nominal">
+              <span class="stream-time font-num">[00:00:00]</span>
+              <span class="stream-badge">Skill Loaded</span>
+              <span class="stream-msg">satellite-fdir v1.0 active: 6 autonomous routines registered.</span>
+            </div>
+            <div class="stream-item nominal">
+              <span class="stream-time font-num">[00:00:01]</span>
+              <span class="stream-badge">Buffer Armed</span>
+              <span class="stream-msg">Temporal rolling buffer armed (N=20 frames, derivative tracking online).</span>
+            </div>
+          </div>
+
+          <!-- Operator Quick Commands Strip -->
+          <div class="operator-actions-wrap">
+            <span class="actions-label">Quick Uplink</span>
+            <div class="operator-button-group">
+              <button class="action-btn" onclick="dispatchManualCommand('CMD:SILENCE', 'Operator manual alarm silence')">Mute Alarm</button>
+              <button class="action-btn" onclick="dispatchManualCommand('CMD:TARE', 'Zero-rate attitude gyro bias')">Tare Gyro</button>
+              <button class="action-btn" onclick="dispatchManualCommand('CMD:RATE:1200', 'EPS power save: throttle downlink to 1.2s')">Power Save</button>
+              <button class="action-btn" onclick="dispatchManualCommand('CMD:RATE:400', 'Diagnostic burst: rate 0.4s')">Burst (0.4s)</button>
+              <button class="action-btn action-btn-reset" onclick="dispatchManualCommand('CMD:FDIR_RESET', 'Reset FDIR fault latch')">Reset FDIR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM PANELS: Mission Timeline & Console -->
+  <footer class="bottom-workspace">
+    <!-- Timeline -->
+    <div class="panel log-panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title-sm">Mission Incident Timeline</h3>
+          <p class="panel-subtitle">Audited state transitions &amp; FDIR events</p>
+        </div>
+        <button class="btn-text-action" onclick="clearIncidentLog()">Clear</button>
+      </div>
+      <div id="incidentLog" class="stream-scroll">
+        <div class="stream-row nominal">[00:00:00] StellarSense Ground Station initialized and listening.</div>
+        <div class="stream-row nominal">[00:00:01] FDIR Subsystem online. All parameters within envelope.</div>
+      </div>
+    </div>
+
+    <!-- Serial Console -->
+    <div class="panel log-panel">
+      <div class="panel-header">
+        <div>
+          <h3 class="panel-title-sm">Telemetry Downlink Stream</h3>
+          <p class="panel-subtitle">Web Serial (115200 Baud) raw frame transport</p>
+        </div>
+        <span class="pill-chip gray font-num">115200 Baud</span>
+      </div>
+      <div id="rawConsole" class="stream-scroll console-feed font-num">
+        <div class="stream-row muted">[System] Awaiting Web Serial connection to Ground Station ESP32...</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js?v=20261110_final"></script>
+</body>
+</html>

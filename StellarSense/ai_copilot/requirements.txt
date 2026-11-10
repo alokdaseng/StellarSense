@@ -1,0 +1,9 @@
+# StellarSense / OrbitGuard — Python Dependencies
+# NOTE: The core system (Harness, Server, Dashboard, Test Suite) is 100% dependency-free
+# and runs on Python 3.10+ standard library without any pip packages!
+#
+# Optional packages for running external LLM backends:
+# google-genai>=0.1.0        # Optional: For Google Gemma API / Vertex AI
+# ollama>=0.1.0              # Optional: For local open-weight Gemma 4 via Ollama
+# pyserial>=3.5              # Optional: For direct python serial bridge (Dashboard uses native Web Serial)
+
