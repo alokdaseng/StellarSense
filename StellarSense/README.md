@@ -1,4 +1,4 @@
-# 🛰️ StellarSense // OrbitGuard
+# 🛰️ StellarSense
 ### Miniature Satellite Health Monitor & Autonomous Gemma 4 Flight Operations Subsystem
 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -24,12 +24,12 @@
 
 ## 👥 Team Information
 - **Team Name**: Nexora Aerospace
-- **Institution / College**: VSSUT / Sambalpur
+- **Institution / College**: SUIIT
 - **Team Members**:
-  1. Team Lead / Embedded & AI Engineer
-  2. Hardware & RF Systems Engineer
-  3. Ground Station & WebGL Software Engineer
-  4. Systems Verification & Safety Engineer
+  1. Alok Das
+  2. Aayan Juned
+  3. Sandeep Kumar Pal
+  4. Ayushman Mishra
 
 ---
 
