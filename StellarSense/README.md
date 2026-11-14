@@ -23,7 +23,7 @@
 ---
 
 ## 👥 Team Information
-- **Team Name**: Nexora Aerospace
+- **Team Name**: Escape
 - **Institution / College**: SUIIT
 - **Team Members**:
   1. Alok Das
