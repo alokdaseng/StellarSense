@@ -15,10 +15,7 @@
 | Category | Track Award | Alignment & Implementation Highlights |
 |---|---|---|
 | 🥇 **Primary Hardware Track** | **Best Hardware Project** | Direct implementation of **Hardware Track PS #1**: Miniature satellite subsystem monitoring internal temperature (DS18B20), power level (INA219), and operational dynamics (dual MPU-6050 IMUs). Dual-node 433 MHz LoRa RF link, dual-core FreeRTOS OBC, and Ground Station receiver with active transistor buzzer (`D13`). |
-| 🤖 **Open Innovation Track** | **Best Use of Gemma 4** | Integrates **Gemma 4** as an **Autonomous Flight Director Agent**. Processes multi-sensor telemetry streams (TCS, EPS, ADCS, STRUCT), performs aerospace FMEA fault isolation, and executes real-world closed-loop telecommands via tools (`CMD:RATE:1200`, `CMD:TARE`, `CMD:SILENCE`, `CMD:FDIR_RESET`). Runs 100% locally on edge without internet. |
-| 🧠 **Open Innovation Track** | **Best Open-Source AI Project** | Built with open-weight Gemma 4, features an **original Model Harness** managing sliding context, derivatives, and action execution; implements an **Agent Skill adhering to the Agent Skill Open Standard v1.0** (`satellite-fdir`); licensed under MIT. |
-| 💻 **Software & Ground Control** | **Best Software Project** | NASA-grade Mission Control Web Dashboard with 3D WebGL CubeSat Digital Twin (Three.js), real-time Web Serial bidirectional telemetry bridge, and rolling 60s multi-channel strip charts (Chart.js). |
-| 👑 **Grand Hackathon Award** | **Winner (Top Prize Pool)** | End-to-end integration uniting physical embedded aerospace hardware, FreeRTOS deterministic DSP, open-weight SLM reasoning, and zero-latency ground station telemetry. |
+
 
 ---
 
